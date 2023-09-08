@@ -57,6 +57,7 @@ export const App = () => {
     setImages([]);
     setPage(1);
     setTotalImages(0);
+    setIsScrollUp(false);
   };
 
   const onClickLoadMore = () => {
