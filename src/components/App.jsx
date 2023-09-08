@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { ThreeDots } from 'react-loader-spinner';
@@ -14,25 +14,26 @@ import { Modal } from './Modal/Modal';
 import { ScrollUp } from './ScrollUp/ScrollUp';
 import { Error } from './Error/Error.styled';
 
-export class App extends Component {
-  state = {
-    searchQuery: '',
-    images: [],
-    currentImageURL: '',
-    currentImageTags: '',
-    page: 1,
-    totalImages: 0,
-    isModal: false,
-    isScrollUp: false,
-    isLoader: false,
-    isError: false,
-  };
+export const App = () => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [images, setImages] = useState([]);
+  const [currentImageURL, setCurrentImageURL] = useState('');
+  const [currentImageTags, setCurrentImageTags] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalImages, setTotalImages] = useState(0);
+  const [isModal, setIsModal] = useState(false);
+  const [isScrollUp, setIsScrollUp] = useState(false);
+  const [isLoader, setIsLoader] = useState(false);
+  const [isError, setIsError] = useState(false);
 
-  async componentDidUpdate(_, prevState) {
-    const { searchQuery, page } = this.state;
-    if (prevState.searchQuery !== searchQuery || prevState.page !== page) {
+  useEffect(() => {
+    if (!searchQuery) {
+      return;
+    }
+    async function fetchImages() {
       try {
-        this.setState({ isError: false, isLoader: true });
+        setIsLoader(true);
+        setIsError(false);
         const data = await getImages(searchQuery, page);
         if (data.totalHits === 0) {
           toast.error(
@@ -40,108 +41,99 @@ export class App extends Component {
           );
           return;
         }
-        this.setState(prevState => ({
-          images: [...prevState.images, ...data.hits],
-          totalImages: data.totalHits,
-        }));
+        setImages(previmages => [...previmages, ...data.hits]);
+        setTotalImages(data.totalHits);
       } catch (error) {
-        this.setState({ isError: true });
+        setIsError(true);
       } finally {
-        this.setState({ isLoader: false });
+        setIsLoader(false);
       }
     }
-  }
+    fetchImages();
+  }, [searchQuery, page]);
 
-  onSubmitForm = query => {
-    this.setState({ searchQuery: query, images: [], page: 1, totalImages: 0 });
+  const onSubmitForm = query => {
+    setSearchQuery(query);
+    setImages([]);
+    setPage(1);
+    setTotalImages(0);
   };
 
-  onClickLoadMore = () => {
-    this.setState({ page: this.state.page + 1, isScrollUp: true });
+  const onClickLoadMore = () => {
+    setPage(page + 1);
+    setIsScrollUp(true);
     scroll.scrollMore(850);
   };
 
-  onModalOpen = (currentImageURL, tags) => {
+  const onModalOpen = (currentImageURL, tags) => {
     if (!currentImageURL) {
       toast.error(
         'Sorry, but the large image is empty. Please try other picture.'
       );
       return;
     }
-    this.setState({
-      currentImageURL: currentImageURL,
-      currentImageTags: tags,
-      isModal: true,
-    });
+    setCurrentImageURL(currentImageURL);
+    setCurrentImageTags(tags);
+    setIsModal(true);
   };
 
-  onModalClose = () => {
-    this.setState({ currentImage: '', isModal: false });
+  const onModalClose = () => {
+    setCurrentImageURL('');
+    setIsModal(false);
   };
 
-  onScroll = () => {
+  const onScroll = () => {
     const scrollY = window.scrollY || document.documentElement.scrollTop;
     if (scrollY > 300) {
-      this.setState({ isScrollUp: true });
+      setIsScrollUp(true);
     } else {
-      this.setState({ isScrollUp: false });
+      setIsScrollUp(false);
     }
   };
 
-  onScrollUp = () => {
+  const onScrollUp = () => {
     scroll.scrollToTop();
-    this.setState({ isScrollUp: false });
+    setIsScrollUp(false);
   };
 
-  render() {
-    const {
-      searchQuery,
-      images,
-      currentImageURL,
-      totalImages,
-      isLoader,
-      isModal,
-      isScrollUp,
-      isError,
-    } = this.state;
-    return (
-      <div onWheel={this.onScroll}>
-        <Searchbar onSubmit={this.onSubmitForm} />
-        <Layout>
-          {searchQuery && (
-            <ImageGallery images={images} onModalOpen={this.onModalOpen} />
-          )}
-          {!isLoader && images.length !== totalImages && (
-            <ButtonLoadMore onClick={this.onClickLoadMore} />
-          )}
-          {isLoader && (
-            <ThreeDots
-              height="80"
-              width="80"
-              radius="9"
-              color="#3F51B5"
-              ariaLabel="three-dots-loading"
-              wrapperStyle={{ justifyContent: 'center' }}
-              wrapperClassName=""
-              visible={true}
-            />
-          )}
-          {isError && !isLoader && (
-            <Error>
-              <p>OOPS! There was an ERROR!</p>
-            </Error>
-          )}
-        </Layout>
-        {isModal && (
-          <Modal
-            currentImageURL={currentImageURL}
-            onModalClose={this.onModalClose}
+  return (
+    <div onWheel={onScroll}>
+      <Searchbar onSubmit={onSubmitForm} />
+      <Layout>
+        {searchQuery && (
+          <ImageGallery images={images} onModalOpen={onModalOpen} />
+        )}
+        {!isLoader && images.length !== totalImages && (
+          <ButtonLoadMore onClick={onClickLoadMore} />
+        )}
+        {isLoader && (
+          <ThreeDots
+            height="80"
+            width="80"
+            radius="9"
+            color="#3F51B5"
+            ariaLabel="three-dots-loading"
+            wrapperStyle={{ justifyContent: 'center' }}
+            wrapperClassName=""
+            visible={true}
           />
         )}
-        {isScrollUp && <ScrollUp onClick={this.onScrollUp} />}
-        <ToastContainer autoClose={3000} />
-        <GlobalStyle />
-      </div>
-    );
-  }
-}
+        {isError && !isLoader && (
+          <Error>
+            <p>OOPS! There was an ERROR!</p>
+          </Error>
+        )}
+      </Layout>
+      {isModal && (
+        <Modal
+          currentImageURL={currentImageURL}
+          tags={currentImageTags}
+          onModalClose={onModalClose}
+        />
+      )}
+      {isScrollUp && <ScrollUp onClick={onScrollUp} />}
+      <ToastContainer autoClose={3000} />
+      <GlobalStyle />
+    </div>
+  );
+};

@@ -1,36 +1,32 @@
-import React, { Component } from 'react';
+import { useEffect } from 'react';
 import { IconClose, ModalStyled, Overlay } from './Modal.styled';
 
-export class Modal extends Component {
-  componentDidMount() {
-    document.addEventListener('keydown', this.onEscClick);
-  }
+export const Modal = ({ currentImageURL, tags, onModalClose }) => {
+  useEffect(() => {
+    document.addEventListener('keydown', onEscClick);
+    return () => {
+      document.removeEventListener('keydown', onEscClick);
+    };
+  });
 
-  componentWillUnmount() {
-    document.removeEventListener('keydown', this.onEscClick);
-  }
-
-  onEscClick = e => {
+  const onEscClick = e => {
     if (e.code === 'Escape') {
-      this.props.onModalClose();
+      onModalClose();
     }
   };
 
-  onModalClose = e => {
+  const onModalCloseIn = e => {
     if (e.target === e.currentTarget) {
-      this.props.onModalClose();
+      onModalClose();
     }
   };
 
-  render() {
-    const { currentImageURL, tags } = this.props;
-    return (
-      <Overlay onClick={this.onModalClose}>
-        <ModalStyled>
-          <img src={currentImageURL} alt={tags} />
-        </ModalStyled>
-        <IconClose onClick={this.onModalClose} />
-      </Overlay>
-    );
-  }
-}
+  return (
+    <Overlay onClick={onModalCloseIn}>
+      <ModalStyled>
+        <img src={currentImageURL} alt={tags} />
+      </ModalStyled>
+      <IconClose onClick={onModalCloseIn} />
+    </Overlay>
+  );
+};
