@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { ThreeDots } from 'react-loader-spinner';
@@ -17,16 +17,20 @@ import { Error } from './Error/Error.styled';
 export const App = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [images, setImages] = useState([]);
-  const [currentImageURL, setCurrentImageURL] = useState('');
-  const [currentImageTags, setCurrentImageTags] = useState('');
+  const [modalData, setModalData] = useState(null);
   const [page, setPage] = useState(1);
   const [totalImages, setTotalImages] = useState(0);
-  const [isModal, setIsModal] = useState(false);
   const [isScrollUp, setIsScrollUp] = useState(false);
   const [isLoader, setIsLoader] = useState(false);
   const [isError, setIsError] = useState(false);
+  const controllerRef = useRef();
 
   useEffect(() => {
+    if (controllerRef.current) {
+      controllerRef.current.abort();
+    }
+    controllerRef.current = new AbortController();
+
     if (!searchQuery) {
       return;
     }
@@ -34,7 +38,7 @@ export const App = () => {
       try {
         setIsLoader(true);
         setIsError(false);
-        const data = await getImages(searchQuery, page);
+        const data = await getImages(searchQuery, page, controllerRef.current);
         if (data.totalHits === 0) {
           toast.error(
             'Sorry, there are no images matching your search query. Please try again.'
@@ -44,12 +48,15 @@ export const App = () => {
         setImages(previmages => [...previmages, ...data.hits]);
         setTotalImages(data.totalHits);
       } catch (error) {
-        setIsError(true);
+        if (error.code !== 'ERR_CANCELED') setIsError(true);
       } finally {
         setIsLoader(false);
       }
     }
     fetchImages();
+    return () => {
+      controllerRef.current.abort();
+    };
   }, [searchQuery, page]);
 
   const onSubmitForm = query => {
@@ -61,7 +68,7 @@ export const App = () => {
   };
 
   const onClickLoadMore = () => {
-    setPage(page + 1);
+    setPage(prevpage => prevpage + 1);
     setIsScrollUp(true);
     scroll.scrollMore(850);
   };
@@ -73,14 +80,7 @@ export const App = () => {
       );
       return;
     }
-    setCurrentImageURL(currentImageURL);
-    setCurrentImageTags(tags);
-    setIsModal(true);
-  };
-
-  const onModalClose = () => {
-    setCurrentImageURL('');
-    setIsModal(false);
+    setModalData({ currentImageURL, tags });
   };
 
   const onScroll = () => {
@@ -125,12 +125,8 @@ export const App = () => {
           </Error>
         )}
       </Layout>
-      {isModal && (
-        <Modal
-          currentImageURL={currentImageURL}
-          tags={currentImageTags}
-          onModalClose={onModalClose}
-        />
+      {modalData && (
+        <Modal modalData={modalData} onModalClose={() => setModalData(null)} />
       )}
       {isScrollUp && <ScrollUp onClick={onScrollUp} />}
       <ToastContainer autoClose={3000} />
